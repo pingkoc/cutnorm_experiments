@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class Opts:
     def __init__(self, xtol = 1e-6, ftol = 1e-12, gtol = 1e-6, rho = 1e-4, eta = 0.1, gamma = 0.85, tau = 1e-3, m = 10, steps = 1e-10, nt = 5, mxitr = 1000, record = 0, **kwargs):
         self.xtol = xtol
@@ -16,7 +15,7 @@ class Opts:
         self.mxitr = mxitr
         self.record = record
 
-    def set_all_with_kwargs(self, **kwargs):
+    def set_all_with_kwargs(self, kwargs):
         for k, v in kwargs.items():
             # For xtol, ftol, gtol, rho, eta, gamma,
             if k == 'xtol' or k == 'ftol' or k == 'gtol' or k == 'rho' or k == 'eta' or k == 'gamma':
@@ -35,7 +34,8 @@ class Opts:
 
 def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
     opts = Opts()
-    # opts.set_all_with_kwargs(kwargs)
+    if kwargs:
+        opts.set_all_with_kwargs(kwargs)
     out = {}
 
     crit = np.ones((opts.mxitr, 3))
@@ -86,15 +86,15 @@ def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
             x = xp * a1 + gp * a2
 
             f, g = fun(x, args)
-            out['nfe'] = out['nfe'] + 1
+            out['nfe'] = out['nfe'] + 1 if 'nfe' in out else 1
 
             if f <= Cval - tau * deriv or nls >= 5:
                 break
-            tau = eta * tau
+            tau = opts.eta * tau
             nls = nls + 1
 
         if opts.record == 10:
-            out['fvec'] = [out['fvec'], f]
+            out['fvec'] = [out['fvec'], f] if 'fvec' in out else [f]
 
         # Recalculate
         xtg = np.sum(x * g, axis=0)
@@ -107,16 +107,16 @@ def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
         XDiff = np.linalg.norm(s, 'fro') / np.sqrt(n)
         FDiff = abs(fp - f) / (abs(fp) + 1)
 
-        if record >= 1:
+        if opts.record >= 1:
             print(
                 '{:4d} \t {:3.2e} \t {:7.6e} \t {:3.2e} \t {:3.2e} \t {:3.2e} \t {:2d}\n'.
                 format(itr, tau, f, nrmG, XDiff, FDiff, nls))
 
         crit[itr, :] = [nrmG, XDiff, FDiff]
-        mcrit = np.mean(crit[itr - min(opts.nt, itr):itr, :], axis=0)
+        mcrit = np.mean(crit[itr - min(opts.nt, itr):itr+1, :], axis=0)
 
-        if (XDiff < xtol and FDiff < ftol) or nrmG < gtol or np.all(
-                mcrit[2:3] < 10 * np.array([xtol, ftol])):
+        if (XDiff < opts.xtol and FDiff < opts.ftol) or nrmG < opts.gtol or np.all(
+                mcrit[1:] < 10 * np.array([opts.xtol, opts.ftol])):
             out['msg'] = 'converge'
             break
 
@@ -126,7 +126,7 @@ def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
         tau = opts.tau
         if sy > 0:
             if np.mod(itr, 2) == 0:
-                tau = np.sum(a * a) / sy
+                tau = np.sum(s * s) / sy
             else:
                 tau = sy / np.sum(y * y)
 
@@ -134,8 +134,8 @@ def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
             tau = max(min(tau, 1e20), 1e-20)
 
         Qp = Q
-        Q = gamma * Qp + 1
-        Cval = (gamma * Qp * Cval + f) / Q
+        Q = opts.gamma * Qp + 1
+        Cval = (opts.gamma * Qp * Cval + f) / Q
 
     if itr >= opts.mxitr:
         out['msg'] = 'exceed max iteration'
@@ -148,16 +148,13 @@ def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
         out['nfe'] = out['nfe'] + 1
         out['feasi'] = np.linalg.norm(np.sum(x * x, axis=0) - 1)
 
-        out['nrmG'] = nrmG
-        out['fval'] = f
-        out['itr'] = itr
+    out['nrmG'] = nrmG
+    out['fval'] = f
+    out['itr'] = itr
     return x, g, out
 
 def maxcut_quad(V, C):
-    g = 2 * (V @ C)
-    f = np.sum(g * V) / 2
+    # Only taking first arg
+    g = 2 * (V @ C[0])
+    f = np.sum(g*V) / 2
     return f, g
-
-
-test = np.array([[1, 2], [2, 3]])
-print(opt_mani_mulit_ball_gbb(test, maxcut_quad, [[1,2],[1,2]]))
