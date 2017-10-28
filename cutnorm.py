@@ -57,7 +57,7 @@ def cutnorm(A, B, w1, w2):
         C_tot = np.sum(C_col_sum)
         # Transformation to preserve cutnorm and enforces infinity one norm = 4*cutnorm
         C = np.c_[C, -1.0*C_row_sum]
-        C = np.r_[C, [np.concatenate((C_col_sum, [C_tot]))]]
+        C = np.r_[C, [np.concatenate((-1.0*C_col_sum, [C_tot]))]]
 
         # Modify rank estimation
         p = int(max(min(round(np.sqrt(2*n1)/2), 100),1))
@@ -67,6 +67,7 @@ def cutnorm(A, B, w1, w2):
         # New augmented matrix (Opt: Use sparse matrix representation)
         C2 = np.c_[np.zeros((n2//2, n2//2)), C]
         C2 = np.r_[C2, np.c_[C, np.zeros((n2//2, n2//2))]]
+        # C2 = np.r_[C2, np.zeros((n2//2, n2))]
 
         # Initiali point normalized
         x0 = np.random.randn(p,n2)
@@ -78,8 +79,8 @@ def cutnorm(A, B, w1, w2):
         toc = time.time()
         tsolve = toc-tic
 
-        U = x[:p, :(n1+1)]
-        V = x[:p, (n1+1):n2]
+        U = x[:, :(n1+1)]
+        V = x[:, (n1+1):]
         objf2 = np.abs(np.sum(C * (U.T @ V)))/4.0
 
         perf = [n2, p, objf2, tsolve, out['itr'], out['nfe'], out['feasi'], out['nrmG']]
@@ -97,5 +98,7 @@ def cutnorm(A, B, w1, w2):
 a = np.ones((6,6))
 b = np.ones((6,6))
 b[2:-2, 2:-2] = 0
-print((a-b)/(6*6))
-print(cutnorm(a,b,1,1))
+# print((a-b)/(6*6))
+# print(cutnorm(a,b,1,1))
+perf, perf2, S, T, w = cutnorm(a,b,1,1)
+print(perf)
