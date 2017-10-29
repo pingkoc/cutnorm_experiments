@@ -158,3 +158,12 @@ def maxcut_quad(V, C):
     g = 2 * (V @ C[0])
     f = np.sum(g*V) / 2
     return f, g
+
+def cutnorm_quad(V,C):
+    n = len(C[0])
+    Vs = V[:, n:]
+    Us = V[:, :n]
+
+    g = 2 * np.c_[Vs @ C[0], Us @ C[0]]
+    f = (np.sum(g[:,:n] * Us) + np.sum(g[:,n:] * Vs))/2
+    return f, g
