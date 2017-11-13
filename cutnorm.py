@@ -31,14 +31,16 @@ def cutnorm_round(U: np.ndarray, V: np.ndarray, C: np.ndarray,
     approx_opt = 0
     uis_opt = np.zeros(n)
     vjs_opt = np.zeros(n)
+    G = np.random.randn(max_round_iter, p)
 
     for i in range(max_round_iter):
-        g = np.random.randn(p)
+        g = G[i]
         uis = np.sign(g @ U)
         vjs = np.sign(g @ V)
 
         # Approx
         approx = abs(np.sum(C * np.outer(uis, vjs)))
+        # approx = abs(np.sum((C * uis).T * vjs))
 
         if approx > approx_opt:
             approx_opt = approx
@@ -110,7 +112,8 @@ def cutnorm(A, B, w1=None, w2=None, max_round_iter=1000):
         raise ValueError("A and B must be square matrices")
     if (w1 is None and w2 is not None) or (w1 is not None and w2 is None):
         raise ValueError("Weight vectors required for both matrices")
-    if (n != len(w1)) or (m != len(w2)):
+    if (w1 is not None and w2 is not None and
+            (n != len(w1) or m != len(w2))):
         raise ValueError("Weight vectors need to have the same lenght "
                          "as the first dimension of the corresponding "
                          "matrices")
