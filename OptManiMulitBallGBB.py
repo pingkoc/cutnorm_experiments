@@ -1,44 +1,41 @@
 import numpy as np
 
-class Opts:
-    def __init__(self, xtol = 1e-6, ftol = 1e-12, gtol = 1e-6, rho = 1e-4, eta = 0.1, gamma = 0.85, tau = 1e-3, m = 10, steps = 1e-10, nt = 5, mxitr = 1000, record = 0, **kwargs):
-        self.xtol = xtol
-        self.ftol = ftol
-        self.gtol = gtol
-        self.rho = rho
-        self.eta = eta
-        self.gamma = gamma
-        self.tau = tau
-        self.m = m
-        self.steps = steps
-        self.nt = nt
-        self.mxitr = mxitr
-        self.record = record
 
-    def set_all_with_kwargs(self, kwargs):
-        for k, v in kwargs.items():
-            # For xtol, ftol, gtol, rho, eta, gamma,
-            if k == 'xtol' or k == 'ftol' or k == 'gtol' or k == 'rho' or k == 'eta' or k == 'gamma':
-                if v < 0 or v > 1:
-                    continue
-            if k == 'tau' and v < 0 or v > 1e3:
-                continue
-            if k == 'm' or k == 'steps' or k == 'record':
-                continue
-            if k == 'nt' and v < 0 or v > 100:
-                continue
-            if k == 'mxitr' and v < 0 or v > 2**20:
-                continue
-            setattr(self, k, v)
+def opt_mani_mulit_ball_gbb(x: np.ndarray, fun, *args, xtol=1e-6,
+                            ftol=1e-12, gtol=1e-6, rho=1e-4, eta=0.1,
+                            gamma=0.85, tau=1e-3, nt=5, mxitr=1000,
+                            record=0):
+    """
+    Line search algorithm for optimization on manifold
+    Reinterpreted directly from Zaiwen Wen and Wotao Yin's
+    Matlab implementation of their paper on
+    'A feasible method for optimizationwith orthogonality constraints'
 
+    Args:
+        x: Numpy array where each column lies on the unit
+            sphere ||x_i||_2 = 1
+        fun: Function that returns the objective function value
+            and its gradient.
+            Params: [x, args]
+            Returns: [
+        args: args to be used in fun
+        kwargs: Options
+            record = 0, no print out
+            mxitr       max number of iterations
+            xtol        stop control for ||X_k - X_{k-1}||
+            gtol        stop control for the projected gradient
+            ftol        stop control for |F_k - F_{k-1}|/(1+|F_{k-1}|)
+                        usually, max{xtol, gtol} > ftol
+    Returns:
+        (x, g, out)
+        x: solution
+        g: gradient of x
+        Out: output information
 
-def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
-    opts = Opts()
-    if kwargs:
-        opts.set_all_with_kwargs(kwargs)
+    """
     out = {}
 
-    crit = np.ones((opts.mxitr, 3))
+    crit = np.ones((mxitr, 3))
 
     # Normalize x
     (n, p) = x.shape
@@ -57,28 +54,28 @@ def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
 
     Q = 1
     Cval = f
-    tau = opts.tau
-    if (opts.record >= 1):
+    tau_orig = tau
+    tau = tau_orig
+    if (record >= 1):
         print('----------- Gradient Method with Line search -----------')
         print(
             '{:4} \t {:10} \t {:10} \t  {:10} \t {:5} \t {:9} \t {:7}'.format(
                 'Iter', 'tau', 'f(X)', 'nrmG', 'Exit', 'funcCount', 'ls-Iter'))
         print('{:4} \t {:10} \t {:10} \t  {:10} \t {:5} \t {:9} \t {:7}'.
               format(0, 0, f, 0, 0, 0))
-    if opts.record == 10:
+    if record == 10:
         out['fvec'] = f
 
     # Main Iteration
-    for itr in range(opts.mxitr):
+    for itr in range(mxitr):
         xp = x
         fp = f
         gp = g
         dtXP = dtX
 
         nls = 1
-        deriv = opts.rho * nrmG**2
+        deriv = rho * nrmG**2
         while True:
-            # Calculate g,f
             tau2 = tau / 2
             beta = 1 + tau2**2 * (-xtg**2 + xxgg)
             a1 = ((1 + tau2 * xtg)**2 - tau2**2 * xxgg) / beta
@@ -90,10 +87,10 @@ def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
 
             if f <= Cval - tau * deriv or nls >= 5:
                 break
-            tau = opts.eta * tau
+            tau = eta * tau
             nls = nls + 1
 
-        if opts.record == 10:
+        if record == 10:
             out['fvec'] = [out['fvec'], f] if 'fvec' in out else [f]
 
         # Recalculate
@@ -107,23 +104,23 @@ def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
         XDiff = np.linalg.norm(s, 'fro') / np.sqrt(n)
         FDiff = abs(fp - f) / (abs(fp) + 1)
 
-        if opts.record >= 1:
-            print(
-                '{:4d} \t {:3.2e} \t {:7.6e} \t {:3.2e} \t {:3.2e} \t {:3.2e} \t {:2d}\n'.
-                format(itr, tau, f, nrmG, XDiff, FDiff, nls))
+        if record >= 1:
+            print(('{:4d} \t {:3.2e} \t {:7.6e} \t {:3.2e} \t {:3.2e}'
+                   '\t {:3.2e} \t {:2d}\n').format(itr, tau, f, nrmG,
+                                                   XDiff, FDiff, nls))
 
         crit[itr, :] = [nrmG, XDiff, FDiff]
-        mcrit = np.mean(crit[itr - min(opts.nt, itr):itr+1, :], axis=0)
+        mcrit = np.mean(crit[itr - min(nt, itr):itr+1, :], axis=0)
 
-        if (XDiff < opts.xtol and FDiff < opts.ftol) or nrmG < opts.gtol or np.all(
-                mcrit[1:] < 10 * np.array([opts.xtol, opts.ftol])):
+        if ((XDiff < xtol and FDiff < ftol) or nrmG < gtol or
+                np.all(mcrit[1:] < 10 * np.array([xtol, ftol]))):
             out['msg'] = 'converge'
             break
 
         y = dtX - dtXP
         sy = np.sum(s * y)
         sy = abs(sy)
-        tau = opts.tau
+        tau = tau_orig
         if sy > 0:
             if np.mod(itr, 2) == 0:
                 tau = np.sum(s * s) / sy
@@ -134,10 +131,10 @@ def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
             tau = max(min(tau, 1e20), 1e-20)
 
         Qp = Q
-        Q = opts.gamma * Qp + 1
-        Cval = (opts.gamma * Qp * Cval + f) / Q
+        Q = gamma * Qp + 1
+        Cval = (gamma * Qp * Cval + f) / Q
 
-    if itr >= opts.mxitr:
+    if itr >= mxitr:
         out['msg'] = 'exceed max iteration'
 
     out['feasi'] = np.linalg.norm(np.sum(x * x, axis=0) - 1)
@@ -153,17 +150,47 @@ def opt_mani_mulit_ball_gbb(x, fun, *args, **kwargs):
     out['itr'] = itr
     return x, g, out
 
-def maxcut_quad(V, C):
+
+def maxcut_quad(V: np.ndarray, C: np.ndarray) -> (np.float_, np.ndarray):
+    """
+    Maxcut function to compute objective function value and gradient
+
+    maxcut SDP:
+    X is n by n matrix
+    max Tr(C*X), s.t., X_ii = 1, X psd
+
+    Args:
+        V: ndarray, Low rank model X = V'*V;
+        C: ndarray, Objective matrix to compute maxcut
+
+    Returns:
+        (f, g)
+        f: float, objective funciton value
+        g: ndarray, gradient
+    """
     # Only taking first arg
     g = 2 * (V @ C[0])
     f = np.sum(g*V) / 2
     return f, g
 
-def cutnorm_quad(V,C):
+
+def cutnorm_quad(V: np.ndarray, C: np.ndarray) -> (np.float_, np.ndarray):
+    """
+    Cutnorm function to compute objective function value and gradient
+
+    Args:
+        V: ndarray, Low rank model X = V'*V;
+        C: ndarray, Objective matrix to compute maxcut
+
+    Returns:
+        (f, g)
+        f: float, objective funciton value
+        g: ndarray, gradient
+    """
     n = len(C[0])
     Vs = V[:, n:]
     Us = V[:, :n]
 
     g = 2 * np.c_[Vs @ C[0], Us @ C[0]]
-    f = (np.sum(g[:,:n] * Us) + np.sum(g[:,n:] * Vs))/2
+    f = (np.sum(g[:, :n] * Us) + np.sum(g[:, n:] * Vs))/2
     return f, g
