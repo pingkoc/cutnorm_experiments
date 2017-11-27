@@ -1,9 +1,11 @@
 from math import gcd
 import time
 import numpy as np
+# from numba import jit
 from OptManiMulitBallGBB import opt_mani_mulit_ball_gbb, cutnorm_quad
 
 
+# @jit(nopython=True, parallel=True)
 def cutnorm_round(U: np.ndarray, V: np.ndarray, C: np.ndarray,
                   max_round_iter: int) -> (np.float_, np.ndarray, np.ndarray):
     '''
@@ -39,7 +41,7 @@ def cutnorm_round(U: np.ndarray, V: np.ndarray, C: np.ndarray,
         vjs = np.sign(g @ V)
 
         # Approx
-        approx = abs(np.sum(C * np.outer(uis, vjs)))
+        approx = np.abs(np.sum(C * np.outer(uis, vjs)))
         # approx = abs(np.sum((C * uis).T * vjs))
 
         if approx > approx_opt:
