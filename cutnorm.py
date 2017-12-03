@@ -31,6 +31,7 @@ def cutnorm_round(U: np.ndarray, V: np.ndarray, C: np.ndarray,
     '''
     (p, n) = U.shape
     approx_opt = 0
+    approx_list = np.zeros(max_round_iter)
     uis_opt = np.zeros(n)
     vjs_opt = np.zeros(n)
     G = np.random.randn(max_round_iter, p)
@@ -43,6 +44,7 @@ def cutnorm_round(U: np.ndarray, V: np.ndarray, C: np.ndarray,
         # Approx
         approx = np.abs(np.sum(C * np.outer(uis, vjs)))
         # approx = abs(np.sum((C * uis).T * vjs))
+        approx_list[i] = approx/4
 
         if approx > approx_opt:
             approx_opt = approx
@@ -51,7 +53,7 @@ def cutnorm_round(U: np.ndarray, V: np.ndarray, C: np.ndarray,
 
     # Cutnorm is 1/4 of infinity norm
     approx_opt = approx_opt/4.
-    return approx_opt, uis_opt, vjs_opt
+    return approx_opt, uis_opt, vjs_opt, approx_list
 
 
 def cutnorm_sets(uis: np.ndarray, vjs: np.ndarray) -> (np.ndarray, np.ndarray):
@@ -245,11 +247,11 @@ def _compute_square_cutnorm(C: np.ndarray, max_round_iter: int):
 
     # Gaussian Rounding
     tic = time.time()
-    (objf_lower, uis, vjs) = cutnorm_round(U, V, C, max_round_iter)
+    (objf_lower, uis, vjs, approx_list) = cutnorm_round(U, V, C, max_round_iter)
     toc = time.time()
     tsolve = toc-tic
 
     (S, T) = cutnorm_sets(uis, vjs)
-    perf2 = [objf_lower, tsolve]
+    perf2 = [objf_lower, tsolve, approx_list]
 
     return perf, perf2, S, T
