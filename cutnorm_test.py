@@ -11,20 +11,20 @@ b[n//3:-n//3, n//3:-n//3] = 0
 
 print("Opt obj function val: " + str(np.sum(a - b)/np.sum(a)))
 
-# # Same-dim, not weighted
-# perf, perf2, S, T, w = cutnorm(a, b)
-# print("Same Dim, not weighted")
-# print(perf, perf2)
+# Same-dim, not weighted
+perf, perf2, S, T, w = cutnorm(a, b)
+print("Same Dim, not weighted")
+print(perf, perf2)
 
-# # Diff-dim, not weighted
-# perf, perf2, S, T, w = cutnorm(a_small, b)
-# print("Diff Dim, not weighted")
-# print(perf, perf2)
+# Diff-dim, not weighted
+perf, perf2, S, T, w = cutnorm(a_small, b)
+print("Diff Dim, not weighted")
+print(perf, perf2)
 
-# # Diff-dim Weighted
-# perf, perf2, S, T, w = cutnorm(a_small, b, np.ones(n//2)/(n//2), np.ones(n)/n)
-# print("Diff Dim, weighted")
-# print(perf, perf2)
+# Diff-dim Weighted
+perf, perf2, S, T, w = cutnorm(a_small, b, np.ones(n//2)/(n//2), np.ones(n)/n)
+print("Diff Dim, weighted")
+print(perf, perf2)
 
 # Different n, plotting
 n_list = np.arange(100, 1000, 100)
@@ -47,3 +47,11 @@ plt.ylabel("Time (s)")
 plt.legend()
 plt.show()
 
+
+# Plotting historgram of rounding operation
+# Same-dim, not weighted
+print("Same Dim, not weighted")
+perf, perf2, S, T, w = cutnorm(a, b)
+print("Approx STD: " + str(np.std(perf2[2])))
+plt.hist(perf2[2], bins=10)
+plt.show()
