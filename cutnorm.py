@@ -31,7 +31,6 @@ def cutnorm_round(U: np.ndarray, V: np.ndarray, C: np.ndarray,
     '''
     (p, n) = U.shape
     approx_opt = 0
-    approx_list = np.zeros(max_round_iter)
     uis_opt = np.zeros(n)
     vjs_opt = np.zeros(n)
     G = np.random.randn(max_round_iter, p)
@@ -44,7 +43,6 @@ def cutnorm_round(U: np.ndarray, V: np.ndarray, C: np.ndarray,
         # Approx
         approx = np.abs(np.sum(C * np.outer(uis, vjs)))
         # approx = abs(np.sum((C * uis).T * vjs))
-        approx_list[i] = approx/4
 
         if approx > approx_opt:
             approx_opt = approx
@@ -53,7 +51,64 @@ def cutnorm_round(U: np.ndarray, V: np.ndarray, C: np.ndarray,
 
     # Cutnorm is 1/4 of infinity norm
     approx_opt = approx_opt/4.
-    return approx_opt, uis_opt, vjs_opt, approx_list
+    return approx_opt, uis_opt, vjs_opt
+
+def cutnorm_round_testing(U: np.ndarray, V: np.ndarray, C: np.ndarray,
+                  max_round_iter: int) -> (np.float_, np.ndarray, np.ndarray):
+    '''
+    Gaussian Rounding for Cutnorm
+
+    The algorithm picks a random standard multivariate gaussian vector
+    w in R^p and computes the rounded solution based on sgn(w \dot ui).
+
+    Adopted from David Koslicki's cutnorm rounding code
+    https://github.com/dkoslicki/CutNorm
+    and Peter Diao's modifications
+
+    Args:
+        U: ndarray, (p, n) shaped matrices of relaxed solutions
+        V: ndarray, (p, n) shaped matrices of relaxed solutions
+        C: ndarray, original (n, n) shaped matrix to compute cutnorm
+        max_round_iter: maximum number of rounding operations
+    Returns:
+        (approx_opt, uis_opt, vjs_opt)
+        approx_opt: approximated objective function value
+        uis_opt: rounded u vector
+        vis_opt: rounded v vector
+    '''
+    (p, n) = U.shape
+    approx_opt = 0
+    uis_opt = np.zeros(n)
+    vjs_opt = np.zeros(n)
+    G = np.random.randn(max_round_iter, p)
+
+    # Storing results for analysis
+    approx_list = np.zeros(max_round_iter)
+    uis_list = np.zeros((max_round_iter, n))
+    vjs_list = np.zeros((max_round_iter, n))
+
+    for i in range(max_round_iter):
+        g = G[i]
+        uis = np.sign(g @ U)
+        vjs = np.sign(g @ V)
+
+        # Approx
+        approx = np.abs(np.sum(C * np.outer(uis, vjs)))
+        # approx = abs(np.sum((C * uis).T * vjs))
+
+        # Storing results for analysis
+        approx_list[i] = approx/4
+        uis_list[i] = uis
+        vjs_list[i] = vjs
+
+        if approx > approx_opt:
+            approx_opt = approx
+            uis_opt = uis
+            vjs_opt = vjs
+
+    # Cutnorm is 1/4 of infinity norm
+    approx_opt = approx_opt/4.
+    return approx_opt, uis_opt, vjs_opt, approx_list, uis_list, vjs_list
 
 
 def cutnorm_sets(uis: np.ndarray, vjs: np.ndarray) -> (np.ndarray, np.ndarray):
@@ -77,7 +132,7 @@ def cutnorm_sets(uis: np.ndarray, vjs: np.ndarray) -> (np.ndarray, np.ndarray):
     return S, T
 
 
-def cutnorm(A, B, w1=None, w2=None, max_round_iter=100):
+def cutnorm(A, B, w1=None, w2=None, max_round_iter=1000):
     """
     Computes the cutnorm of the differences between the two matrices
 
@@ -247,11 +302,13 @@ def _compute_square_cutnorm(C: np.ndarray, max_round_iter: int):
 
     # Gaussian Rounding
     tic = time.time()
-    (objf_lower, uis, vjs, approx_list) = cutnorm_round(U, V, C, max_round_iter)
+    (objf_lower, uis, vjs, approx_list,
+     uis_list, vjs_list) = cutnorm_round_testing(U, V, C,
+                                         max_round_iter)
     toc = time.time()
     tsolve = toc-tic
 
     (S, T) = cutnorm_sets(uis, vjs)
-    perf2 = [objf_lower, tsolve, approx_list]
+    perf2 = [objf_lower, tsolve, approx_list, uis, vjs, uis_list, vjs_list]
 
     return perf, perf2, S, T
