@@ -55,27 +55,6 @@ def cutnorm_round(U: np.ndarray, V: np.ndarray, C: np.ndarray,
 
 def cutnorm_round_testing(U: np.ndarray, V: np.ndarray, C: np.ndarray,
                   max_round_iter: int) -> (np.float_, np.ndarray, np.ndarray):
-    '''
-    Gaussian Rounding for Cutnorm
-
-    The algorithm picks a random standard multivariate gaussian vector
-    w in R^p and computes the rounded solution based on sgn(w \dot ui).
-
-    Adopted from David Koslicki's cutnorm rounding code
-    https://github.com/dkoslicki/CutNorm
-    and Peter Diao's modifications
-
-    Args:
-        U: ndarray, (p, n) shaped matrices of relaxed solutions
-        V: ndarray, (p, n) shaped matrices of relaxed solutions
-        C: ndarray, original (n, n) shaped matrix to compute cutnorm
-        max_round_iter: maximum number of rounding operations
-    Returns:
-        (approx_opt, uis_opt, vjs_opt)
-        approx_opt: approximated objective function value
-        uis_opt: rounded u vector
-        vis_opt: rounded v vector
-    '''
     (p, n) = U.shape
     approx_opt = 0
     uis_opt = np.zeros(n)
@@ -87,6 +66,8 @@ def cutnorm_round_testing(U: np.ndarray, V: np.ndarray, C: np.ndarray,
     uis_list = np.zeros((max_round_iter, n))
     vjs_list = np.zeros((max_round_iter, n))
 
+    # Full Rank
+    tic_full = time.time()
     for i in range(max_round_iter):
         g = G[i]
         uis = np.sign(g @ U)
@@ -105,10 +86,43 @@ def cutnorm_round_testing(U: np.ndarray, V: np.ndarray, C: np.ndarray,
             approx_opt = approx
             uis_opt = uis
             vjs_opt = vjs
+    toc_full = time.time()
+    tsolve_full = toc_full-tic_full
+
+    # log(n) Low Rank Approximation
+    approx_opt_low = 0
+    uis_opt_low = np.zeros(n)
+    vjs_opt_low = np.zeros(n)
+
+    tic_low = time.time()
+    C_U, C_s, C_V = np.linalg.svd(C)
+    low_rank = int(np.log2(n))
+    # low_rank = n
+    for i in range(max_round_iter):
+        g = G[i]
+        uis = np.sign(g @ U)
+        vjs = np.sign(g @ V)
+
+        # Approx
+        C_U_low_filtered = C_U[:, :low_rank] * uis[:, np.newaxis]
+        C_V_low_filtered = C_V[:low_rank] * vjs
+        C_S = np.diag(C_s[:low_rank])
+        C_low_filtered = np.dot(C_U_low_filtered,
+                            np.dot(C_S, C_V_low_filtered))
+        approx = np.abs(np.sum(C_low_filtered))
+
+        if approx > approx_opt_low:
+            approx_opt_low = approx
+            uis_opt_low = uis
+            vjs_opt_low = vjs
+    toc_low = time.time()
+    tsolve_low = toc_low-tic_low
 
     # Cutnorm is 1/4 of infinity norm
     approx_opt = approx_opt/4.
-    return approx_opt, uis_opt, vjs_opt, approx_list, uis_list, vjs_list
+    approx_opt_low = approx_opt_low/4.
+    return (approx_opt, uis_opt, vjs_opt, approx_list, uis_list, vjs_list, tsolve_full,
+            approx_opt_low, tsolve_low, C_s)
 
 
 def cutnorm_sets(uis: np.ndarray, vjs: np.ndarray) -> (np.ndarray, np.ndarray):
@@ -305,12 +319,14 @@ def _compute_square_cutnorm(C: np.ndarray, max_round_iter: int):
 
     # (objf_lower, uis, vjs) = cutnorm_round(U, V, C, max_round_iter)
     (objf_lower, uis, vjs, approx_list,
-     uis_list, vjs_list) = cutnorm_round_testing(U, V, C,
+     uis_list, vjs_list, tsolve_full,
+     objf_lowrank, tsolve_low, spectrum) = cutnorm_round_testing(U, V, C,
                                          max_round_iter)
     toc = time.time()
     tsolve = toc-tic
 
     (S, T) = cutnorm_sets(uis, vjs)
-    perf2 = [objf_lower, tsolve, approx_list, uis, vjs, uis_list, vjs_list]
+    perf2 = [objf_lower, tsolve, approx_list, uis, vjs, uis_list, vjs_list,
+             tsolve_full, objf_lowrank, tsolve_low, spectrum]
 
     return perf, perf2, S, T

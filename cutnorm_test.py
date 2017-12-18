@@ -11,25 +11,26 @@ b[n//3:-n//3, n//3:-n//3] = 0
 
 print("Opt obj function val: " + str(np.sum(a - b)/np.sum(a)))
 
-# Same-dim, not weighted
-perf, perf2, S, T, w = cutnorm(a, b)
-print("Same Dim, not weighted")
-print(perf, perf2)
+# # Same-dim, not weighted
+# perf, perf2, S, T, w = cutnorm(a, b)
+# print("Same Dim, not weighted")
+# print(perf, perf2)
 
-# Diff-dim, not weighted
-perf, perf2, S, T, w = cutnorm(a_small, b)
-print("Diff Dim, not weighted")
-print(perf, perf2)
+# # Diff-dim, not weighted
+# perf, perf2, S, T, w = cutnorm(a_small, b)
+# print("Diff Dim, not weighted")
+# print(perf, perf2)
 
-# Diff-dim Weighted
-perf, perf2, S, T, w = cutnorm(a_small, b, np.ones(n//2)/(n//2), np.ones(n)/n)
-print("Diff Dim, weighted")
-print(perf, perf2)
+# # Diff-dim Weighted
+# perf, perf2, S, T, w = cutnorm(a_small, b, np.ones(n//2)/(n//2), np.ones(n)/n)
+# print("Diff Dim, weighted")
+# print(perf, perf2)
 
 # Different n, plotting
 n_list = np.arange(100, 1000, 100)
 sdp_t = []
 round_t = []
+round_lowrank_t = []
 for n_val in n_list:
     print("Calculating for n " + str(n_val))
     a = np.ones((n_val, n_val))
@@ -38,20 +39,22 @@ for n_val in n_list:
     # Same-dim, not weighted
     perf, perf2, S, T, w = cutnorm(a, b)
     sdp_t.append(perf[3])
-    round_t.append(perf2[1])
+    round_t.append(perf2[7])
+    round_lowrank_t.append(perf2[9])
 
 plt.plot(n_list, sdp_t, label="sdp time")
-plt.plot(n_list, round_t, label="round time")
+plt.plot(n_list, round_t, label="round full rank time")
+plt.plot(n_list, round_lowrank_t, label="round log2(n) rank time")
 plt.xlabel("matrix size")
 plt.ylabel("Time (s)")
 plt.legend()
 plt.show()
 
 
-# Plotting historgram of rounding operation
-# Same-dim, not weighted
-print("Same Dim, not weighted")
-perf, perf2, S, T, w = cutnorm(a, b)
-print("Approx STD: " + str(np.std(perf2[2])))
-plt.hist(perf2[2], bins=10)
-plt.show()
+# # Plotting historgram of rounding operation
+# # Same-dim, not weighted
+# print("Same Dim, not weighted")
+# perf, perf2, S, T, w = cutnorm(a, b)
+# print("Approx STD: " + str(np.std(perf2[2])))
+# plt.hist(perf2[2], bins=10)
+# plt.show()

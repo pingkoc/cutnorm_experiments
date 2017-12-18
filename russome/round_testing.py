@@ -33,63 +33,91 @@ B = nets[j]*(nets[j] > lamb)
 [perf, perf2, S, T, w] = cutnorm(A,B)
 print("SDP Solution (Pre Rounding): " + str(perf[2]) + " Rounding Solution: " + str(perf2[0]))
 
-# Compute hamming between uis and vjs
-uis_opt = perf2[3]
-vjs_opt = perf2[4]
-uis_list = perf2[5]
-vjs_list = perf2[6]
-uis_hamming = np.array([np.sum(np.not_equal(uis_opt, uis_k))
-                        for uis_k in uis_list])
-vjs_hamming = np.array([np.sum(np.not_equal(vjs_opt, vjs_k))
-                        for vjs_k in vjs_list])
+# # Compute hamming between uis and vjs
+# uis_opt = perf2[3]
+# vjs_opt = perf2[4]
+# uis_list = perf2[5]
+# vjs_list = perf2[6]
+# uis_hamming = np.array([np.sum(np.not_equal(uis_opt, uis_k))
+#                         for uis_k in uis_list])
+# vjs_hamming = np.array([np.sum(np.not_equal(vjs_opt, vjs_k))
+#                         for vjs_k in vjs_list])
 
-# Calculate mode for plot seperation
-mode_approx = np.median(perf2[2])
-approx_bins = np.linspace(np.min(perf2[2]), np.max(perf2[2]), num=400)
-approx_high = np.array([approx for approx in perf2[2] if approx >= mode_approx])
-approx_low = np.array([approx for approx in perf2[2] if approx < mode_approx])
-approx_bins_high = np.array([bin_val for bin_val in approx_bins
-                             if bin_val >= mode_approx])
-approx_bins_low = np.array([bin_val for bin_val in approx_bins
-                            if bin_val < mode_approx])
-uis_hamming_high = np.array([uis_hamm for k,uis_hamm in enumerate(uis_hamming)
-                             if perf2[2][k] >= mode_approx])
-uis_hamming_low = np.array([uis_hamm for k,uis_hamm in enumerate(uis_hamming)
-                             if perf2[2][k] < mode_approx])
-vjs_hamming_high = np.array([vjs_hamm for k,vjs_hamm in enumerate(vjs_hamming)
-                             if perf2[2][k] >= mode_approx])
-vjs_hamming_low = np.array([vjs_hamm for k,vjs_hamm in enumerate(vjs_hamming)
-                             if perf2[2][k] < mode_approx])
+# # Calculate mode for plot seperation
+# mode_approx = np.median(perf2[2])
+# approx_bins = np.linspace(np.min(perf2[2]), np.max(perf2[2]), num=400)
+# approx_high = np.array([approx for approx in perf2[2] if approx >= mode_approx])
+# approx_low = np.array([approx for approx in perf2[2] if approx < mode_approx])
+# approx_bins_high = np.array([bin_val for bin_val in approx_bins
+#                              if bin_val >= mode_approx])
+# approx_bins_low = np.array([bin_val for bin_val in approx_bins
+#                             if bin_val < mode_approx])
+# uis_hamming_high = np.array([uis_hamm for k,uis_hamm in enumerate(uis_hamming)
+#                              if perf2[2][k] >= mode_approx])
+# uis_hamming_low = np.array([uis_hamm for k,uis_hamm in enumerate(uis_hamming)
+#                              if perf2[2][k] < mode_approx])
+# vjs_hamming_high = np.array([vjs_hamm for k,vjs_hamm in enumerate(vjs_hamming)
+#                              if perf2[2][k] >= mode_approx])
+# vjs_hamming_low = np.array([vjs_hamm for k,vjs_hamm in enumerate(vjs_hamming)
+#                              if perf2[2][k] < mode_approx])
 
+# # Plotting Histogram for Cutnorm Val and UV
+# f, axarr = plt.subplots(3)
+# axarr[0].hist(approx_high, label="Rounding Cutnorm Vals Upper 50%",
+#               bins=approx_bins_high)
+# axarr[0].hist(approx_low, label="Rounding Cutnorm Vals Lower 50%",
+#               bins=approx_bins_low)
+# axarr[0].axvline(x=[perf[2]], label="SDP Solution", c='r')
+# axarr[0].set_xlabel("Cutnorm Val")
+# axarr[0].set_ylabel("Frequency")
+# axarr[0].legend()
+
+# axarr[1].hist(uis_hamming_high, label="Hamming distance uis to uis_opt Upper 50%",
+#               bins=200)
+# axarr[1].hist(uis_hamming_low, label="Hamming distance uis to uis_opt Lower 50%",
+#               bins=200)
+# axarr[1].set_xlabel("Hamming Distance out of " +
+#                     str(uis_opt.shape[0]))
+# axarr[1].set_ylabel("Frequency")
+# axarr[1].legend()
+
+# axarr[2].hist(vjs_hamming_high, label="Hamming distance vjs to vjs_opt Upper 50%",
+#               bins=200)
+# axarr[2].hist(vjs_hamming_low, label="Hamming distance vjs to vjs_opt Lower 50%",
+#               bins=200)
+# axarr[2].set_xlabel("Hamming Distance out of " +
+#                     str(vjs_opt.shape[0]))
+# axarr[2].set_ylabel("Frequency")
+# axarr[2].legend()
+
+# plt.suptitle("Cutnorm rounding between " + filenames[i] + " and " + filenames[j] + " with lambda=" + str(lamb), fontsize=15)
+# plt.tight_layout()
+# plt.show()
+
+# Low rank approx results
 # Plotting Histogram for Cutnorm Val and UV
 f, axarr = plt.subplots(3)
-axarr[0].hist(approx_high, label="Rounding Cutnorm Vals Upper 50%",
-              bins=approx_bins_high)
-axarr[0].hist(approx_low, label="Rounding Cutnorm Vals Lower 50%",
-              bins=approx_bins_low)
-axarr[0].axvline(x=[perf[2]], label="SDP Solution", c='r')
+axarr[0].hist(perf2[2], label="Rounding Cutnorm Vals",
+              bins=400)
+axarr[0].axvline(x=[perf2[8]], label="Low Rank Log2(n) Cutnorm Val", c='r')
 axarr[0].set_xlabel("Cutnorm Val")
 axarr[0].set_ylabel("Frequency")
 axarr[0].legend()
 
-axarr[1].hist(uis_hamming_high, label="Hamming distance uis to uis_opt Upper 50%",
-              bins=200)
-axarr[1].hist(uis_hamming_low, label="Hamming distance uis to uis_opt Lower 50%",
-              bins=200)
-axarr[1].set_xlabel("Hamming Distance out of " +
-                    str(uis_opt.shape[0]))
-axarr[1].set_ylabel("Frequency")
+axarr[1].bar(np.arange(len(perf2[10][:100])), perf2[10][:100],
+             align='center', label="Spectral Values")
+axarr[1].axvline(x=[int(np.log2(len(perf2[10])))],
+                 label="Log2(n)", c='r')
+axarr[1].set_xlabel("Order")
+axarr[1].set_ylabel("Spectral Values")
 axarr[1].legend()
 
-axarr[2].hist(vjs_hamming_high, label="Hamming distance vjs to vjs_opt Upper 50%",
-              bins=200)
-axarr[2].hist(vjs_hamming_low, label="Hamming distance vjs to vjs_opt Lower 50%",
-              bins=200)
-axarr[2].set_xlabel("Hamming Distance out of " +
-                    str(vjs_opt.shape[0]))
-axarr[2].set_ylabel("Frequency")
-axarr[2].legend()
+axarr[2].bar([0,1], [perf2[7], perf2[9]], align='center')
+axarr[2].set_xlabel("Time")
+axarr[2].set_ylabel("Rank")
 
+plt.sca(axarr[2])
+plt.xticks([0,1], ['Full', 'Log2(n)'])
 plt.suptitle("Cutnorm rounding between " + filenames[i] + " and " + filenames[j] + " with lambda=" + str(lamb), fontsize=15)
 plt.tight_layout()
 plt.show()
