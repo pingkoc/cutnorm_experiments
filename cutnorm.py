@@ -77,7 +77,7 @@ def cutnorm_sets(uis: np.ndarray, vjs: np.ndarray) -> (np.ndarray, np.ndarray):
     return S, T
 
 
-def cutnorm(A, B, w1=None, w2=None, max_round_iter=1000):
+def cutnorm(A, B, w1=None, w2=None, max_round_iter=100):
     """
     Computes the cutnorm of the differences between the two matrices
 
