@@ -11,7 +11,7 @@ def sbm(community_sizes, prob_mat):
     if len(community_sizes) != len(prob_mat):
         raise ValueError("community_sizes needs to be of size n if "
                          "prob_mat is nxn")
-    if not (np.all(prob_mat > 0) and np.all(prob_mat <= 1)):
+    if not (np.all(prob_mat >= 0) and np.all(prob_mat <= 1)):
         raise ValueError("Needs to be a valid probability matrix.")
 
     n = np.sum(community_sizes)
@@ -25,3 +25,23 @@ def sbm(community_sizes, prob_mat):
             sbm[prev_sum_i:prev_sum_i + size_i, prev_sum_j:prev_sum_j + size_j] = sample
 
     return sbm
+
+def sbm_autoregressive(community_sizes, prob_list):
+    # Construct the prob matrix from prob list using
+    # idea similar to that of autoregressive model
+    # Each element in the prob matrix is
+    # (p_i * p_j)^(abs(i - j))
+    n_probs = len(prob_list)
+    prob_matrix = np.zeros((n_probs, n_probs))
+    for i in range(n_probs):
+        for j in range(n_probs):
+            if i == j:
+                prob_matrix[i, i] = prob_list[i]
+            else:
+                prob_matrix[i, j] = (prob_list[i] * prob_list[j])**(abs(i - j))
+    return sbm(community_sizes, prob_matrix)
+
+def make_symmetric_triu(mat):
+    mat = np.triu(mat)
+    mat = np.maximum(mat, mat.T)
+    return mat
