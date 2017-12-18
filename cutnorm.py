@@ -302,6 +302,8 @@ def _compute_square_cutnorm(C: np.ndarray, max_round_iter: int):
 
     # Gaussian Rounding
     tic = time.time()
+
+    # (objf_lower, uis, vjs) = cutnorm_round(U, V, C, max_round_iter)
     (objf_lower, uis, vjs, approx_list,
      uis_list, vjs_list) = cutnorm_round_testing(U, V, C,
                                          max_round_iter)
