@@ -25,7 +25,7 @@ B = sbm(B_community_sizes, B_prob_mat)
 
 [perf, perf2, S, T, w] = cutnorm(A,B)
 print("\nSDP Solution (Pre Rounding): " + str(perf[2]) + " Rounding Solution: " + str(perf2[0]))
-plt.hist(perf2[2], label="Rounding Cutnorm Vals")
+plt.hist(perf2[2], label="Rounding Cutnorm Vals", bins=500)
 plt.axvline(x=[perf[2]], label="SDP Solution", c='r')
 plt.xlabel("Cutnorm Val")
 plt.ylabel("Frequency")
