@@ -127,7 +127,7 @@ def cutnorm_round_testing(U: np.ndarray, V: np.ndarray, C: np.ndarray,
 
 def cutnorm_sets(uis: np.ndarray, vjs: np.ndarray) -> (np.ndarray, np.ndarray):
     """
-    Generates the curnorm sets from the rounded SDP solutions
+    Generates the cutnorm sets from the rounded SDP solutions
 
     Args:
         uis: ndarray, (n+1, ) shaped array of rounded +- 1 solution
@@ -146,7 +146,7 @@ def cutnorm_sets(uis: np.ndarray, vjs: np.ndarray) -> (np.ndarray, np.ndarray):
     return S, T
 
 
-def cutnorm(A, B, w1=None, w2=None, max_round_iter=1000):
+def cutnorm(A, B, w1=None, w2=None, max_round_iter=1000, testing=False):
     """
     Computes the cutnorm of the differences between the two matrices
 
@@ -156,6 +156,7 @@ def cutnorm(A, B, w1=None, w2=None, max_round_iter=1000):
         w1: ndarray, (n, 1) array of weights for A
         w2: ndarray, (m, 1) array of weights for B
         max_round_iter: int, number of iterations for gaussian rounding
+        testing: boolean, toggle testing functions
     Returns:
         (perf, perf2, S, T, w)
         perf: results from OptManiMulitBallGBB
@@ -191,74 +192,82 @@ def cutnorm(A, B, w1=None, w2=None, max_round_iter=1000):
                          "as the first dimension of the corresponding "
                          "matrices")
 
-    # TODO: Perhaps weighted and diff size matrices can be merged
     if w1 is not None:
-        v1 = np.hstack((0, np.cumsum(w1)[:-1], 1.))
-        v2 = np.hstack((0, np.cumsum(w2)[:-1], 1.))
-        v = np.unique(np.hstack((v1, v2)))
-        w = np.diff(v)
-        n1 = len(w)
-
-        a = np.zeros(n1, dtype=np.int32)
-        b = np.zeros(n1, dtype=np.int32)
-        for i in range(n1-1):
-            val = (v[i] + v[i+1])/2
-            a[i] = np.argwhere(v1 > val)[0] - 1
-            b[i] = np.argwhere(v2 > val)[0] - 1
-        # Last element is always itself in new weights
-        a[-1] = len(w1)-1
-        b[-1] = len(w2)-1
-        A_sq = A[a]
-        A_sq = A_sq[:, a]
-        B_sq = B[b]
-        B_sq = B_sq[:, b]
-        C = (A_sq - B_sq)
-
-        # Normalize C according to weights
-        C = C*(np.outer(w, w))
-
-        perf, perf2, S, T = _compute_square_cutnorm(C, max_round_iter)
-
+        w, C = _compute_C_weighted(A, B, w1, w2)
     else:
         if n == m:
-            n1 = n
-            w = np.ones(n)/n
-            C = (A - B)/(n1*n1)  # Normalized C
-
-            perf, perf2, S, T = _compute_square_cutnorm(C, max_round_iter)
-
+            w, C = _compute_C_square_non_weighted(A, B)
         else:
-            d = gcd(n, m)
-            k = n/d
-            l = m/d
-            c = k + l - 1
-            v1 = np.arange(k)/n
-            v2 = np.arange(1, l+1)/m
-            v = np.hstack((v1, v2))
-            np.sort(v)
-            w = np.diff(v)
-            w = np.tile(w, d)
+            w, C = _compute_C_non_square_non_weighted(A, B)
 
-            # Create matrix of differences
-            n1 = len(w)
-            vals = np.tile(v[:-1], d) + np.floor(np.arange(n1)/c)/d + 1./(2*n1)
-            a = np.floor(vals*n).astype(int)
-            b = np.floor(vals*m).astype(int)
-            A_sq = A[a]
-            A_sq = A_sq[:, a]
-            B_sq = B[b]
-            B_sq = B_sq[:, b]
-            C = (A_sq - B_sq)
-
-            # Normalize C according to weights
-            C = C*(np.outer(w, w))
-
-            perf, perf2, S, T = _compute_square_cutnorm(C, max_round_iter)
+    perf, perf2, S, T = _compute_square_cutnorm(C, max_round_iter, testing=testing)
 
     return perf, perf2, S, T, w
 
+def _compute_C_weighted(A, B, w1, w2):
+    v1 = np.hstack((0, np.cumsum(w1)[:-1], 1.))
+    v2 = np.hstack((0, np.cumsum(w2)[:-1], 1.))
+    v = np.unique(np.hstack((v1, v2)))
+    w = np.diff(v)
+    n1 = len(w)
 
-def _compute_square_cutnorm(C: np.ndarray, max_round_iter: int):
+    a = np.zeros(n1, dtype=np.int32)
+    b = np.zeros(n1, dtype=np.int32)
+    for i in range(n1-1):
+        val = (v[i] + v[i+1])/2
+        a[i] = np.argwhere(v1 > val)[0] - 1
+        b[i] = np.argwhere(v2 > val)[0] - 1
+    # Last element is always itself in new weights
+    a[-1] = len(w1)-1
+    b[-1] = len(w2)-1
+    A_sq = A[a]
+    A_sq = A_sq[:, a]
+    B_sq = B[b]
+    B_sq = B_sq[:, b]
+    C = (A_sq - B_sq)
+
+    # Normalize C according to weights
+    C = C*(np.outer(w, w))
+    return w, C
+
+def _compute_C_square_non_weighted(A, B):
+    n, n2 = np.shape(A)
+    n1 = n
+    w = np.ones(n)/n
+    C = (A - B)/(n1*n1)  # Normalized C
+    return w, C
+
+def _compute_C_non_square_non_weighted(A, B):
+    n, n2 = np.shape(A)
+    m, m2 = np.shape(B)
+    d = gcd(n, m)
+    k = n/d
+    l = m/d
+    c = k + l - 1
+    v1 = np.arange(k)/n
+    v2 = np.arange(1, l+1)/m
+    v = np.hstack((v1, v2))
+    np.sort(v)
+    w = np.diff(v)
+    w = np.tile(w, d)
+
+    # Create matrix of differences
+    n1 = len(w)
+    vals = np.tile(v[:-1], d) + np.floor(np.arange(n1)/c)/d + 1./(2*n1)
+    a = np.floor(vals*n).astype(int)
+    b = np.floor(vals*m).astype(int)
+    A_sq = A[a]
+    A_sq = A_sq[:, a]
+    B_sq = B[b]
+    B_sq = B_sq[:, b]
+    C = (A_sq - B_sq)
+
+    # Normalize C according to weights
+    C = C*(np.outer(w, w))
+    return w, C
+
+
+def _compute_square_cutnorm(C: np.ndarray, max_round_iter: int, testing: bool):
     """
     Computes the cutnorm of square matrix C
 
@@ -317,16 +326,21 @@ def _compute_square_cutnorm(C: np.ndarray, max_round_iter: int):
     # Gaussian Rounding
     tic = time.time()
 
-    # (objf_lower, uis, vjs) = cutnorm_round(U, V, C, max_round_iter)
-    (objf_lower, uis, vjs, approx_list,
-     uis_list, vjs_list, tsolve_full,
-     objf_lowrank, tsolve_low, spectrum) = cutnorm_round_testing(U, V, C,
-                                         max_round_iter)
+    if not testing:
+        (objf_lower, uis, vjs) = cutnorm_round(U, V, C, max_round_iter)
+    else:
+        (objf_lower, uis, vjs, approx_list,
+         uis_list, vjs_list, tsolve_full,
+         objf_lowrank, tsolve_low, spectrum) = cutnorm_round_testing(U, V, C,
+                                             max_round_iter)
     toc = time.time()
     tsolve = toc-tic
 
     (S, T) = cutnorm_sets(uis, vjs)
-    perf2 = [objf_lower, tsolve, approx_list, uis, vjs, uis_list, vjs_list,
-             tsolve_full, objf_lowrank, tsolve_low, spectrum]
+    if not testing:
+        perf2 = [objf_lower, tsolve]
+    else:
+        perf2 = [objf_lower, tsolve, approx_list, uis, vjs, uis_list, vjs_list,
+                tsolve_full, objf_lowrank, tsolve_low, spectrum]
 
     return perf, perf2, S, T
