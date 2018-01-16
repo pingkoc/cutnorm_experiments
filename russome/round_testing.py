@@ -113,8 +113,8 @@ axarr[1].set_ylabel("Spectral Values")
 axarr[1].legend()
 
 axarr[2].bar([0,1], [perf2[7], perf2[9]], align='center')
-axarr[2].set_xlabel("Time")
-axarr[2].set_ylabel("Rank")
+axarr[2].set_ylabel("Time")
+axarr[2].set_xlabel("Rank")
 
 plt.sca(axarr[2])
 plt.xticks([0,1], ['Full', 'Log2(n)'])
